@@ -19,3 +19,9 @@ export const logoutAll = () =>
 
 export const getMe = () =>
   api.get(API.ME);
+
+export const getSessions = () =>
+  api.get(API.SESSIONS);
+
+export const revokeSession = (deviceId) =>
+  api.delete(`${API.SESSIONS}/${deviceId}`);

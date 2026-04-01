@@ -5,7 +5,7 @@
  * Handles refresh token storage, lookup, deletion, and multi-device management.
  *
  * Redis key patterns:
- *   refresh:<token>         → Hash { userId, deviceId, createdAt }
+ *   refresh:<token>         → Hash { userId, deviceId, userAgent, ip, createdAt }
  *   user_sessions:<userId>  → Set of refresh tokens
  */
 
@@ -16,12 +16,20 @@ const logger = require('../logger');
 const REFRESH_PREFIX = 'refresh:';
 const SESSION_PREFIX = 'user_sessions:';
 
-async function createSession(refreshToken, userId, deviceId) {
+async function createSession(refreshToken, userId, deviceId, meta = {}) {
   const key = REFRESH_PREFIX + refreshToken;
   const sessionKey = SESSION_PREFIX + userId;
 
+  const fields = {
+    userId,
+    deviceId,
+    userAgent: meta.userAgent || 'Unknown',
+    ip: meta.ip || 'Unknown',
+    createdAt: Date.now().toString(),
+  };
+
   const pipeline = redis.pipeline();
-  pipeline.hset(key, { userId, deviceId, createdAt: Date.now().toString() });
+  pipeline.hset(key, fields);
   pipeline.expire(key, config.jwtRefreshExpiresInSeconds);
   pipeline.sadd(sessionKey, refreshToken);
   await pipeline.exec();
@@ -72,10 +80,49 @@ async function revokeDeviceSession(userId, deviceId) {
   return false;
 }
 
+async function listSessions(userId) {
+  const sessionKey = SESSION_PREFIX + userId;
+  const tokens = await redis.smembers(sessionKey);
+
+  const sessions = [];
+  for (const token of tokens) {
+    const data = await redis.hgetall(REFRESH_PREFIX + token);
+    if (data && data.userId) {
+      sessions.push({
+        deviceId: data.deviceId,
+        userAgent: data.userAgent,
+        ip: data.ip,
+        createdAt: parseInt(data.createdAt, 10),
+      });
+    }
+  }
+
+  // Sort by most recent first
+  sessions.sort((a, b) => b.createdAt - a.createdAt);
+  return sessions;
+}
+
+async function deleteSessionByDeviceId(userId, deviceId) {
+  const sessionKey = SESSION_PREFIX + userId;
+  const tokens = await redis.smembers(sessionKey);
+
+  for (const token of tokens) {
+    const data = await redis.hgetall(REFRESH_PREFIX + token);
+    if (data && data.deviceId === deviceId) {
+      await deleteSession(token, userId);
+      logger.info('Session revoked by deviceId', { userId, deviceId });
+      return true;
+    }
+  }
+  return false;
+}
+
 module.exports = {
   createSession,
   findSession,
   deleteSession,
   deleteAllSessions,
   revokeDeviceSession,
+  listSessions,
+  deleteSessionByDeviceId,
 };

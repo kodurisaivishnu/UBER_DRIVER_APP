@@ -12,5 +12,7 @@ router.post('/refresh', controller.refresh);
 router.post('/logout', authenticate, controller.logout);
 router.post('/logout-all', authenticate, controller.logoutAll);
 router.get('/me', authenticate, controller.me);
+router.get('/sessions', authenticate, controller.getSessions);
+router.delete('/sessions/:deviceId', authenticate, controller.deleteSessionByDevice);
 
 module.exports = router;

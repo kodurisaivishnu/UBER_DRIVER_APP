@@ -11,6 +11,7 @@ export const API = {
   LOGOUT: '/logout',
   LOGOUT_ALL: '/logout-all',
   ME: '/me',
+  SESSIONS: '/sessions',
 };
 
 export const MESSAGES = {
@@ -22,6 +23,7 @@ export const MESSAGES = {
   LOGOUT_ALL_SUCCESS: 'Logged out from all devices',
   TOO_MANY_ATTEMPTS: 'Too many attempts. Try again later.',
   EMAIL_EXISTS: 'This email is already registered.',
+  SESSION_REVOKED: 'Device logged out successfully',
 };
 
 export const CONFIG = {

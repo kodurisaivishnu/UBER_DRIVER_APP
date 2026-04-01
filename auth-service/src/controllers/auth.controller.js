@@ -16,6 +16,17 @@ function cookieOptions() {
   };
 }
 
+// Extract device metadata from request
+function getDeviceMeta(req) {
+  return {
+    userAgent: req.headers['user-agent'] || 'Unknown',
+    ip: req.headers['x-forwarded-for']?.split(',')[0]?.trim()
+      || req.headers['x-real-ip']
+      || req.ip
+      || 'Unknown',
+  };
+}
+
 // POST /register
 async function register(req, res, next) {
   try {
@@ -46,13 +57,11 @@ async function login(req, res, next) {
   try {
     const { email, password, deviceId, role } = req.body;
 
-    // Find all accounts for this email to verify password first
     const accounts = await User.find({ email }).select('+passwordHash');
     if (accounts.length === 0) {
       throw new ApiError(401, 'Invalid email or password');
     }
 
-    // Verify password against the first account (same password across roles)
     const valid = await authService.comparePassword(password, accounts[0].passwordHash);
     if (!valid) {
       throw new ApiError(401, 'Invalid email or password');
@@ -60,7 +69,6 @@ async function login(req, res, next) {
 
     const roles = accounts.map((a) => a.role);
 
-    // If multiple roles exist and no role specified, ask user to choose
     if (roles.length > 1 && !role) {
       return res.json({
         status: 'role_required',
@@ -69,7 +77,6 @@ async function login(req, res, next) {
       });
     }
 
-    // Pick the account: use specified role or the only one available
     const user = role
       ? accounts.find((a) => a.role === role)
       : accounts[0];
@@ -78,10 +85,8 @@ async function login(req, res, next) {
       throw new ApiError(401, `No account found with role: ${role}`);
     }
 
-    // Revoke existing session for this device (prevent session leaks on re-login)
     await sessionService.revokeDeviceSession(user.id, deviceId);
 
-    // Generate tokens
     const accessToken = authService.generateAccessToken({
       userId: user.id,
       email: user.email,
@@ -90,12 +95,10 @@ async function login(req, res, next) {
     });
     const refreshToken = authService.generateRefreshToken();
 
-    // Store refresh token in Redis
-    await sessionService.createSession(refreshToken, user.id, deviceId);
+    await sessionService.createSession(refreshToken, user.id, deviceId, getDeviceMeta(req));
 
     logger.info('Login success', { userId: user.id, role: user.role, deviceId });
 
-    // Set refresh token as HTTP-only cookie
     res.cookie('refreshToken', refreshToken, cookieOptions());
 
     res.json({
@@ -121,23 +124,19 @@ async function refresh(req, res, next) {
     const session = await sessionService.findSession(oldToken);
 
     if (!session) {
-      // Possible token theft — nuke all sessions if we can decode the old token
       logger.warn('Refresh token not found (possible theft)', { tokenPrefix: oldToken.slice(0, 8) });
       throw new ApiError(401, 'Invalid refresh token');
     }
 
     const { userId, deviceId } = session;
 
-    // Delete old refresh token (rotation)
     await sessionService.deleteSession(oldToken, userId);
 
-    // Fetch user to get latest data for new JWT
     const user = await User.findById(userId);
     if (!user) {
       throw new ApiError(401, 'User not found');
     }
 
-    // Generate new token pair
     const accessToken = authService.generateAccessToken({
       userId: user.id,
       email: user.email,
@@ -146,7 +145,7 @@ async function refresh(req, res, next) {
     });
     const refreshToken = authService.generateRefreshToken();
 
-    await sessionService.createSession(refreshToken, userId, deviceId);
+    await sessionService.createSession(refreshToken, userId, deviceId, getDeviceMeta(req));
 
     logger.info('Token refreshed', { userId, deviceId });
 
@@ -208,4 +207,41 @@ async function me(req, res, next) {
   }
 }
 
-module.exports = { register, login, refresh, logout, logoutAll, me };
+// GET /sessions — list all active sessions for this user
+async function getSessions(req, res, next) {
+  try {
+    const sessions = await sessionService.listSessions(req.user.userId);
+    const currentDeviceId = req.user.deviceId;
+
+    const result = sessions.map((s) => ({
+      ...s,
+      isCurrent: s.deviceId === currentDeviceId,
+    }));
+
+    res.json({ status: 'success', data: { sessions: result } });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// DELETE /sessions/:deviceId — logout a specific device
+async function deleteSessionByDevice(req, res, next) {
+  try {
+    const { deviceId } = req.params;
+
+    if (deviceId === req.user.deviceId) {
+      throw new ApiError(400, 'Cannot revoke current session. Use /logout instead.');
+    }
+
+    const revoked = await sessionService.deleteSessionByDeviceId(req.user.userId, deviceId);
+    if (!revoked) {
+      throw new ApiError(404, 'Session not found');
+    }
+
+    res.json({ status: 'success', message: 'Session revoked' });
+  } catch (err) {
+    next(err);
+  }
+}
+
+module.exports = { register, login, refresh, logout, logoutAll, me, getSessions, deleteSessionByDevice };

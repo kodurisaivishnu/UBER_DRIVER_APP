@@ -16,6 +16,7 @@ import { toast } from '@/shared/utils/toast';
 import { ROUTES, MESSAGES } from '@/constants';
 import logger from '@/lib/logger';
 import UserProfileCard from '../components/UserProfileCard';
+import ActiveSessions from '../components/ActiveSessions';
 
 const comingSoonSections = [
   { icon: DirectionsCarIcon, title: 'My Trips', desc: 'View trip history and active rides' },
@@ -71,6 +72,9 @@ export default function DashboardPage() {
 
       {/* Profile */}
       <UserProfileCard user={user} />
+
+      {/* Active Sessions */}
+      <ActiveSessions />
 
       {/* Actions */}
       <div className="flex flex-wrap gap-3">
