@@ -12,10 +12,8 @@ const app = express();
 
 // --- Security middleware ---
 app.use(helmet());
-app.use(cors({
-  origin: config.corsOrigins,
-  credentials: true,
-}));
+// CORS is handled at the nginx gateway level — no CORS headers here
+// to avoid duplicate Access-Control-Allow-Origin headers
 
 // --- Parsers ---
 app.use(express.json({ limit: '10kb' }));
