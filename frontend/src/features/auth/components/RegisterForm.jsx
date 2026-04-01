@@ -10,7 +10,6 @@ import Typography from '@mui/material/Typography';
 import EmailOutlined from '@mui/icons-material/EmailOutlined';
 import PersonOutlined from '@mui/icons-material/PersonOutlined';
 import DirectionsCarIcon from '@mui/icons-material/DirectionsCar';
-import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import PersonPinIcon from '@mui/icons-material/PersonPin';
 import { registerSchema } from '../validation/authSchemas';
 import { registerUser } from '../api/auth.api';
@@ -152,10 +151,6 @@ export default function RegisterForm() {
             <ToggleButton value="driver">
               <DirectionsCarIcon sx={{ mr: 1, fontSize: 20 }} />
               Driver
-            </ToggleButton>
-            <ToggleButton value="admin">
-              <AdminPanelSettingsIcon sx={{ mr: 1, fontSize: 20 }} />
-              Admin
             </ToggleButton>
           </ToggleButtonGroup>
           {errors.role && (

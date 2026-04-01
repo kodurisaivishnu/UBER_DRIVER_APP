@@ -27,8 +27,8 @@ const register = [
     .trim()
     .notEmpty()
     .withMessage('Role is required')
-    .isIn(['driver', 'admin', 'rider'])
-    .withMessage('Role must be driver, admin, or rider'),
+    .isIn(['driver', 'rider'])
+    .withMessage('Role must be driver or rider'),
 ];
 
 const login = [
