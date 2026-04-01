@@ -4,7 +4,6 @@ import { PASSWORD_RULES } from '@/constants';
 const { MIN_LENGTH, PATTERNS } = PASSWORD_RULES;
 
 export const loginSchema = z.object({
-  role: z.enum(['driver', 'rider'], { required_error: 'Please select a role' }),
   email: z.string().email('Valid email is required'),
   password: z.string().min(1, 'Password is required'),
 });

@@ -10,7 +10,7 @@ function cookieOptions() {
   return {
     httpOnly: true,
     secure: config.cookieSecure,
-    sameSite: 'strict',
+    sameSite: config.env === 'production' ? 'none' : 'strict',
     path: '/',
     maxAge: config.jwtRefreshExpiresInSeconds * 1000,
   };
@@ -46,17 +46,36 @@ async function login(req, res, next) {
   try {
     const { email, password, deviceId, role } = req.body;
 
-    const query = { email };
-    if (role) query.role = role;
-
-    const user = await User.findOne(query).select('+passwordHash');
-    if (!user) {
+    // Find all accounts for this email to verify password first
+    const accounts = await User.find({ email }).select('+passwordHash');
+    if (accounts.length === 0) {
       throw new ApiError(401, 'Invalid email or password');
     }
 
-    const valid = await authService.comparePassword(password, user.passwordHash);
+    // Verify password against the first account (same password across roles)
+    const valid = await authService.comparePassword(password, accounts[0].passwordHash);
     if (!valid) {
       throw new ApiError(401, 'Invalid email or password');
+    }
+
+    const roles = accounts.map((a) => a.role);
+
+    // If multiple roles exist and no role specified, ask user to choose
+    if (roles.length > 1 && !role) {
+      return res.json({
+        status: 'role_required',
+        message: 'Multiple accounts found. Please select a role.',
+        data: { roles },
+      });
+    }
+
+    // Pick the account: use specified role or the only one available
+    const user = role
+      ? accounts.find((a) => a.role === role)
+      : accounts[0];
+
+    if (!user) {
+      throw new ApiError(401, `No account found with role: ${role}`);
     }
 
     // Revoke existing session for this device (prevent session leaks on re-login)
@@ -74,7 +93,7 @@ async function login(req, res, next) {
     // Store refresh token in Redis
     await sessionService.createSession(refreshToken, user.id, deviceId);
 
-    logger.info('Login success', { userId: user.id, deviceId });
+    logger.info('Login success', { userId: user.id, role: user.role, deviceId });
 
     // Set refresh token as HTTP-only cookie
     res.cookie('refreshToken', refreshToken, cookieOptions());
