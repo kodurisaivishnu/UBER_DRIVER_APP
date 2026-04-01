@@ -22,6 +22,13 @@ const register = [
     .trim()
     .notEmpty()
     .withMessage('Name is required'),
+
+  body('role')
+    .trim()
+    .notEmpty()
+    .withMessage('Role is required')
+    .isIn(['driver', 'admin', 'rider'])
+    .withMessage('Role must be driver, admin, or rider'),
 ];
 
 const login = [

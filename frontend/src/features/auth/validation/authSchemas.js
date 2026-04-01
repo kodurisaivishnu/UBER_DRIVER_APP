@@ -11,6 +11,7 @@ export const loginSchema = z.object({
 export const registerSchema = z.object({
   name: z.string().trim().min(1, 'Name is required'),
   email: z.string().email('Valid email is required'),
+  role: z.enum(['driver', 'admin', 'rider'], { required_error: 'Please select a role' }),
   password: z
     .string()
     .min(MIN_LENGTH, `At least ${MIN_LENGTH} characters`)

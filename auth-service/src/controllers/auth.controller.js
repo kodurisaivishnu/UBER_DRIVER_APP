@@ -19,7 +19,7 @@ function cookieOptions() {
 // POST /register
 async function register(req, res, next) {
   try {
-    const { email, password, name } = req.body;
+    const { email, password, name, role } = req.body;
 
     const existing = await User.findOne({ email });
     if (existing) {
@@ -27,7 +27,7 @@ async function register(req, res, next) {
     }
 
     const passwordHash = await authService.hashPassword(password);
-    const user = await User.create({ email, passwordHash, name });
+    const user = await User.create({ email, passwordHash, name, role });
 
     logger.info('User registered', { email: user.email, userId: user.id });
 

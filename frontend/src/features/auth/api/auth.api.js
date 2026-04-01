@@ -2,8 +2,8 @@ import api from '@/lib/axios';
 import { API } from '@/constants';
 import { getDeviceId } from '@/shared/utils/deviceId';
 
-export const registerUser = ({ email, password, name }) =>
-  api.post(API.REGISTER, { email, password, name });
+export const registerUser = ({ email, password, name, role }) =>
+  api.post(API.REGISTER, { email, password, name, role });
 
 export const loginUser = ({ email, password }) =>
   api.post(API.LOGIN, { email, password, deviceId: getDeviceId() });
