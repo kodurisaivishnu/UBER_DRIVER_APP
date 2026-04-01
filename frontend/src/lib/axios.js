@@ -3,8 +3,10 @@ import useAuthStore from '@/store/authStore';
 import { API, MESSAGES } from '@/constants';
 import logger from '@/lib/logger';
 
+// Dev: Vite proxy handles /auth → auth-service
+// Prod: VITE_API_URL points directly to Render auth service
 const api = axios.create({
-  baseURL: '/auth',
+  baseURL: import.meta.env.VITE_API_URL || '/auth',
   withCredentials: true,
   headers: { 'Content-Type': 'application/json' },
 });
