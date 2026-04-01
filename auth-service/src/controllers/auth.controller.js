@@ -21,9 +21,9 @@ async function register(req, res, next) {
   try {
     const { email, password, name, role } = req.body;
 
-    const existing = await User.findOne({ email });
+    const existing = await User.findOne({ email, role });
     if (existing) {
-      throw new ApiError(409, 'Email already registered');
+      throw new ApiError(409, `Already registered as ${role}`);
     }
 
     const passwordHash = await authService.hashPassword(password);
@@ -44,9 +44,12 @@ async function register(req, res, next) {
 // POST /login
 async function login(req, res, next) {
   try {
-    const { email, password, deviceId } = req.body;
+    const { email, password, deviceId, role } = req.body;
 
-    const user = await User.findOne({ email }).select('+passwordHash');
+    const query = { email };
+    if (role) query.role = role;
+
+    const user = await User.findOne(query).select('+passwordHash');
     if (!user) {
       throw new ApiError(401, 'Invalid email or password');
     }

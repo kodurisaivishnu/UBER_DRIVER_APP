@@ -45,6 +45,12 @@ const login = [
     .trim()
     .notEmpty()
     .withMessage('deviceId is required'),
+
+  body('role')
+    .optional()
+    .trim()
+    .isIn(['driver', 'rider', 'admin'])
+    .withMessage('Invalid role'),
 ];
 
 module.exports = { register, login };

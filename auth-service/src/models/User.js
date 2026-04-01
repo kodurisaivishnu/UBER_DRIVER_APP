@@ -5,7 +5,6 @@ const userSchema = new mongoose.Schema(
     email: {
       type: String,
       required: true,
-      unique: true,
       lowercase: true,
       trim: true,
     },
@@ -28,6 +27,9 @@ const userSchema = new mongoose.Schema(
     timestamps: true,
   }
 );
+
+// One account per email+role combo (same person can be rider AND driver)
+userSchema.index({ email: 1, role: 1 }, { unique: true });
 
 // Clean JSON output — strip sensitive fields
 userSchema.set('toJSON', {
